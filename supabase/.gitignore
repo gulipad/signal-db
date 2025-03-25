@@ -1,0 +1,15 @@
+# Supabase
+.branches
+.temp
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local
+
+# other
+exp_seed.sql
+exp_seed.csv
+generate_seed.js
+
+.DS_Store
