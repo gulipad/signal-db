@@ -13,3 +13,5 @@ exp_seed.csv
 generate_seed.js
 
 .DS_Store
+
+.env
