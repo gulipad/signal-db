@@ -15,3 +15,4 @@ generate_seed.js
 .DS_Store
 
 .env
+*seed.sql
