@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS assign_default_bucket_trigger ON candidates;
