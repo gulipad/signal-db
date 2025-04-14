@@ -1,0 +1,2 @@
+ALTER TABLE candidates
+ADD COLUMN launchpad_optin BOOLEAN DEFAULT FALSE;
