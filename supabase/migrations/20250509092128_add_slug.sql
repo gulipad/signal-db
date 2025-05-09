@@ -2,6 +2,9 @@
 ALTER TABLE public.candidates
 ADD COLUMN candidate_slug TEXT UNIQUE;
 
+-- Create extension for unaccent function if it doesn't exist
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 -- Create a function to generate slugs based on candidate names
 CREATE OR REPLACE FUNCTION generate_candidate_slug(
   first_name TEXT,
@@ -15,9 +18,10 @@ DECLARE
 BEGIN
   -- Create base slug from name (or use candidate_id prefix if no name)
   IF first_name IS NOT NULL OR last_name IS NOT NULL THEN
+    -- First unaccent the names to convert accented characters to their ASCII equivalents
     base_slug := LOWER(
       REGEXP_REPLACE(
-        COALESCE(first_name, '') || '-' || COALESCE(last_name, ''),
+        UNACCENT(COALESCE(first_name, '')) || '-' || UNACCENT(COALESCE(last_name, '')),
         '[^a-zA-Z0-9]', '-', 'g'
       )
     );
