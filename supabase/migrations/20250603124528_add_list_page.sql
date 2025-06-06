@@ -50,6 +50,6 @@ FROM project_buckets pb
 JOIN projects p ON pb.project_id = p.project_id
 JOIN candidate_project_buckets cpb ON pb.bucket_id = cpb.bucket_id
 JOIN candidates c ON cpb.candidate_id = c.candidate_id
-LEFT JOIN public_profiles pp ON c.candidate_id = pp.candidate_id AND pp.is_visible = true
+JOIN public_profiles pp ON c.candidate_id = pp.candidate_id AND pp.is_visible = true
 LEFT JOIN candidate_social_links csl ON c.candidate_id = csl.candidate_id
-WHERE pb.is_public = true; 
+WHERE pb.is_public = true;
