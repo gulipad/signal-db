@@ -1,7 +1,7 @@
 -- Add opportunity and export_to_website fields to startups table
 ALTER TABLE startups 
 ADD COLUMN opportunity TEXT,
-ADD COLUMN export_to_website BOOLEAN DEFAULT false;
+ADD COLUMN export_to_website BOOLEAN DEFAULT true;
 
 -- Add index for filtering by export_to_website
 CREATE INDEX idx_startups_export_to_website 
