@@ -14,5 +14,8 @@ generate_seed.js
 
 .DS_Store
 
+# Claude Code
+.claude/settings.local.json
+
 .env
 *seed.sql
