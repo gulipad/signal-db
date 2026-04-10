@@ -3,6 +3,15 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=fgvloiinjfnpwiitnkiz"
+    },
+    "supabase-local": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@bytebase/dbhub",
+        "--dsn",
+        "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+      ]
     }
   }
 }
