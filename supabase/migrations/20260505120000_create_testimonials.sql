@@ -15,7 +15,8 @@ create table public.testimonials (
   company_website  text,
 
   avatar           text,
-  quote            text not null,
+  quote_english    text,
+  quote_spanish    text,
 
   website          text,
   linkedin_slug    text,
