@@ -118,27 +118,21 @@ CREATE TRIGGER trg_record_bucket_transition
 -- assignment yields an entry event and a move whose origin is unknown (NULL).
 -- Marked source='backfill' so it is distinguishable from real history.
 
+-- A never-moved assignment still sits where it entered, so its entry event is
+-- exact. A moved assignment has lost its origin to the in-place UPDATE, so only
+-- the move is recorded -- an entry row would be NULL -> NULL, which is both
+-- meaningless and rejected by the no-op CHECK above.
+
 INSERT INTO public.candidate_bucket_transitions
   (candidate_id, project_id, from_bucket_id, to_bucket_id, assignment_id, occurred_at, source)
-SELECT cpb.candidate_id,
-       cpb.project_id,
-       NULL,
-       -- If the row was never moved, it still sits where it entered. If it was
-       -- moved, the entry bucket is unrecoverable, so record entry as unknown
-       -- and let the move row below carry the current bucket.
-       CASE WHEN cpb.updated_at IS NULL OR cpb.updated_at = cpb.created_at
-            THEN cpb.bucket_id
-            ELSE NULL
-       END,
-       cpb.id,
-       COALESCE(cpb.created_at, now()),
-       'backfill'
+SELECT cpb.candidate_id, cpb.project_id, NULL, cpb.bucket_id, cpb.id,
+       COALESCE(cpb.created_at, now()), 'backfill'
 FROM public.candidate_project_buckets cpb
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.candidate_bucket_transitions t WHERE t.assignment_id = cpb.id
-)
-  -- Skip the degenerate NULL -> NULL row the CHECK would reject.
-  AND NOT (cpb.updated_at IS DISTINCT FROM cpb.created_at AND cpb.bucket_id IS NULL);
+WHERE (cpb.updated_at IS NULL OR cpb.updated_at = cpb.created_at)
+  AND cpb.bucket_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM public.candidate_bucket_transitions t WHERE t.assignment_id = cpb.id
+  );
 
 INSERT INTO public.candidate_bucket_transitions
   (candidate_id, project_id, from_bucket_id, to_bucket_id, assignment_id, occurred_at, source)
@@ -146,6 +140,7 @@ SELECT cpb.candidate_id, cpb.project_id, NULL, cpb.bucket_id, cpb.id, cpb.update
 FROM public.candidate_project_buckets cpb
 WHERE cpb.updated_at IS NOT NULL
   AND cpb.updated_at <> cpb.created_at
+  AND cpb.bucket_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM public.candidate_bucket_transitions t
     WHERE t.assignment_id = cpb.id AND t.occurred_at = cpb.updated_at
