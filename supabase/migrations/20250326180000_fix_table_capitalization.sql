@@ -1,10 +1,13 @@
--- Rename tables to lowercase to match Supabase's default behavior
-ALTER TABLE "Buckets" RENAME TO buckets;
-ALTER TABLE "Candidates" RENAME TO candidates;
-ALTER TABLE "Sources" RENAME TO sources;
-ALTER TABLE "Source_Data" RENAME TO source_data;
-ALTER TABLE "Candidate_Summaries" RENAME TO candidate_summaries;
-ALTER TABLE "Candidate_Buckets" RENAME TO candidate_buckets;
+-- Rename tables to lowercase to match Supabase's default behavior.
+-- IF EXISTS so this replays on a database built from scratch: the earlier
+-- migrations declare these tables unquoted, which Postgres folds to lowercase,
+-- so the quoted capitalized names only exist on the original hosted schema.
+ALTER TABLE IF EXISTS "Buckets" RENAME TO buckets;
+ALTER TABLE IF EXISTS "Candidates" RENAME TO candidates;
+ALTER TABLE IF EXISTS "Sources" RENAME TO sources;
+ALTER TABLE IF EXISTS "Source_Data" RENAME TO source_data;
+ALTER TABLE IF EXISTS "Candidate_Summaries" RENAME TO candidate_summaries;
+ALTER TABLE IF EXISTS "Candidate_Buckets" RENAME TO candidate_buckets;
 
 -- Update sequence names
 ALTER SEQUENCE IF EXISTS "Buckets_bucket_id_seq" RENAME TO buckets_bucket_id_seq;
