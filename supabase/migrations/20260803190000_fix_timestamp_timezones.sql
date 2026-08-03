@@ -83,12 +83,24 @@ ALTER TABLE public.source_data
 -- The superseded first-generation bucket tables. Converted for consistency so a
 -- future reader is not misled into copying the old pattern; they are unreferenced
 -- by application code.
-ALTER TABLE public.buckets
-  ALTER COLUMN created_at TYPE timestamptz USING created_at AT TIME ZONE 'UTC';
+--
+-- Guarded, because these tables exist ONLY on databases built from this migration
+-- set. They were dropped from the hosted project by hand and no migration records
+-- it, so `to_regclass` returns NULL there and an unguarded ALTER would abort the
+-- whole migration. Verified against production: both are absent.
+DO $$
+BEGIN
+  IF to_regclass('public.buckets') IS NOT NULL THEN
+    ALTER TABLE public.buckets
+      ALTER COLUMN created_at TYPE timestamptz USING created_at AT TIME ZONE 'UTC';
+  END IF;
 
-ALTER TABLE public.candidate_buckets
-  ALTER COLUMN assigned_at TYPE timestamptz USING assigned_at AT TIME ZONE 'UTC',
-  ALTER COLUMN updated_at  TYPE timestamptz USING updated_at  AT TIME ZONE 'UTC';
+  IF to_regclass('public.candidate_buckets') IS NOT NULL THEN
+    ALTER TABLE public.candidate_buckets
+      ALTER COLUMN assigned_at TYPE timestamptz USING assigned_at AT TIME ZONE 'UTC',
+      ALTER COLUMN updated_at  TYPE timestamptz USING updated_at  AT TIME ZONE 'UTC';
+  END IF;
+END $$;
 
 -- Defaults are re-asserted so new rows carry an instant rather than a naive
 -- local reading. now() already returns timestamptz; the old columns were
