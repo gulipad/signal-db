@@ -1,5 +1,5 @@
 -- ============================================================================
--- Connect placements and intros to the existing job board
+-- Connect placements to the existing job board
 -- ============================================================================
 -- An earlier draft of this work added a `startup_roles` table to model the
 -- demand side, on the belief that the only representation of demand was
@@ -9,22 +9,22 @@
 -- startup_id, title, required_skills[], nice_to_have_skills[], salary and equity
 -- bands, experience_level, status, published_at and closes_at.
 --
--- So rather than introduce a competing table, point the recruiting pipeline at
--- the one that exists.
+-- So rather than introduce a competing table, point placements at the one that
+-- exists.
 --
--- Both columns are nullable: an intro or placement may still reference only a
--- company, exactly as today, and `role_title` remains for placements not tied to
--- a tracked opening.
+-- Only placements carry job_id. An intro is company-level -- "meet this
+-- candidate" -- and is not made against a specific posting; a placement is
+-- someone actually taking a named role. Putting job_id on intros would invite
+-- an attribution that the workflow never establishes.
+--
+-- The column is nullable: a placement may still reference only a company, and
+-- `role_title` remains for placements not tied to a tracked opening.
 -- ============================================================================
 
 ALTER TABLE public.candidate_startup_placements
   ADD COLUMN IF NOT EXISTS job_id uuid REFERENCES public.jobs(id) ON DELETE SET NULL;
 
-ALTER TABLE public.candidate_startup_intros
-  ADD COLUMN IF NOT EXISTS job_id uuid REFERENCES public.jobs(id) ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS idx_csp_job    ON public.candidate_startup_placements (job_id);
-CREATE INDEX IF NOT EXISTS idx_intros_job ON public.candidate_startup_intros (job_id);
+CREATE INDEX IF NOT EXISTS idx_csp_job ON public.candidate_startup_placements (job_id);
 
 COMMENT ON COLUMN public.candidate_startup_placements.job_id IS
   'The opening this placement filled, from the job board. NULL is valid for placements not tied to a tracked posting.';
