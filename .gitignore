@@ -19,3 +19,5 @@ generate_seed.js
 
 .env
 *seed.sql
+# Local PR notes produced alongside branches
+.pr/
