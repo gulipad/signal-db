@@ -1,5 +1,13 @@
--- Drop the existing trigger
-DROP TRIGGER IF EXISTS assign_default_bucket_trigger ON "Candidates";
+-- Drop the existing trigger. The capitalized variant needs a relation guard:
+-- IF EXISTS covers a missing trigger but not a missing table, so on a database
+-- built from scratch (where the table is lowercase) it would abort the migration.
+DO $$
+BEGIN
+  IF to_regclass('"Candidates"') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS assign_default_bucket_trigger ON "Candidates";
+  END IF;
+END $$;
+
 DROP TRIGGER IF EXISTS assign_default_bucket_trigger ON candidates;
 
 -- Update the function to use lowercase table names
