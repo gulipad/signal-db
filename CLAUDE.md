@@ -54,8 +54,10 @@ News clone) uses this project too. All of its migrations live here.
   `news_private.badge_rules`.
 - News accounts are auth users with `user_metadata.signup_app = 'news'` and
   get no `public.profiles` row.
-- Its auth email templates are `supabase/templates/`; production has the same
-  ones in Authentication > Emails.
+- Its auth email templates are `supabase/templates/`. Production's project
+  settings for News (exposed `news` schema, email sign-up with confirmation,
+  templates, redirect URL, SMTP) are applied with
+  `scripts/news-production-settings.sh`, which changes nothing else.
 
 ## Local development
 
