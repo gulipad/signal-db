@@ -54,6 +54,10 @@ News clone) uses this project too. All of its migrations live here.
   `news_private.badge_rules`.
 - News accounts are auth users with `user_metadata.signup_app = 'news'` and
   get no `public.profiles` row.
+- A News login never carries Signal access: Signal staff accounts
+  (`public.staff`) can't use News. The app signs them out right after login
+  (`news.is_signal_staff()`) and `news.claim_profile()` refuses them. Never
+  authorize anything on `user_metadata`: every user can rewrite their own.
 - Its auth email templates are `supabase/templates/`. Production's project
   settings for News (exposed `news` schema, email sign-up with confirmation,
   templates, redirect URL, SMTP) are applied with
