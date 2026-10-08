@@ -154,9 +154,9 @@ select is((select badge from news.profiles where username = 't_alan'), null, 'Al
 select is((select badge from news.profiles where username = 'grace'), 'launchpad',
           'launchpad outranks community');
 
--- The scheduled job runs both steps.
+-- The scheduled job runs every step: members, badges, staff.
 select is((select command from cron.job where jobname = 'news-signal-badges'),
-          'select news_private.sync_signal_members(); select news_private.apply_badges();',
+          'select news_private.sync_signal_members(); select news_private.apply_badges(); select news_private.apply_staff();',
           'the bridge runs every minute');
 
 select * from finish();
