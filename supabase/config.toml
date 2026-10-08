@@ -199,6 +199,19 @@ content_path = "./supabase/templates/recovery.html"
 subject = "Confirm your new email for Exponential News"
 content_path = "./supabase/templates/email_change.html"
 
+# In production, Exponential News sends every auth email itself, through
+# Resend, as the project's Send Email Hook (exponential-news:
+# app/api/auth/send-email; turned on by scripts/news-production-settings.sh).
+# The templates above are what Supabase sends if the hook is off. Locally
+# Supabase mails Mailpit directly. To run local emails through News' hook
+# instead (News' dev server then delivers them to Mailpit): uncomment this,
+# put the same secret in News' .env.local as SEND_EMAIL_HOOK_SECRET (with
+# MAILPIT_URL=http://127.0.0.1:54324), and restart the stack.
+# [auth.hook.send_email]
+# enabled = true
+# uri = "http://host.docker.internal:3000/api/auth/send-email"
+# secrets = "v1,whsec_<base64 secret>"
+
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
 enable_signup = false

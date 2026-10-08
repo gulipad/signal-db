@@ -9,18 +9,20 @@
 #   Auth      email provider on, "Confirm email" on (required: News gives
 #             Exponential badges by confirmed email), minimum password length
 #             of at least 8, News' email templates (supabase/templates)
+#   Auth      links in auth emails last an hour (what the emails say)
 #   Auth      with NEWS_URL: <NEWS_URL>auth/confirm** added to the redirect URLs
-#   Auth      with SMTP_HOST: a custom SMTP sender (without one, Supabase only
-#             delivers auth emails to the organization's own team members)
+#   Auth      with NEWS_URL and SEND_EMAIL_HOOK_SECRET_FILE: the Send Email
+#             Hook, so every auth email is sent by News through Resend
+#             (<NEWS_URL>api/auth/send-email). Turn it on only once News is
+#             deployed with RESEND_API_KEY and the same secret: from then on,
+#             no auth email leaves without it.
 #
 # Usage, from your own terminal (not through an AI tool, so the token stays
 # with you):
 #
 #   export SUPABASE_ACCESS_TOKEN=...   # https://supabase.com/dashboard/account/tokens
-#   export NEWS_URL=https://news.goexponential.org/                 # optional
-#   export SMTP_HOST=smtp.resend.com SMTP_PORT=465 SMTP_USER=resend \
-#          SMTP_PASS=<resend api key> SMTP_ADMIN_EMAIL=news@goexponential.org \
-#          SMTP_SENDER_NAME="Exponential News"                       # optional
+#   export NEWS_URL=https://exponential-news.vercel.app/              # optional
+#   export SEND_EMAIL_HOOK_SECRET_FILE=~/.config/exponential-news/send-email-hook-secret  # optional
 #   scripts/news-production-settings.sh            # shows the changes, asks first
 #   scripts/news-production-settings.sh --yes      # no question
 set -euo pipefail
@@ -74,6 +76,7 @@ auth_patch=$(jq -nc \
   | {
       external_email_enabled: true,
       mailer_autoconfirm: false,
+      mailer_otp_exp: 3600,
       password_min_length: ([$cur.password_min_length // 6, 8] | max),
       mailer_subjects_confirmation: "Your Exponential News login link",
       mailer_templates_confirmation_content: $confirmation,
@@ -89,16 +92,16 @@ auth_patch=$(jq -nc \
   | with_entries(select(.value != $cur[.key]))
   ')
 
-if [ -n "${SMTP_HOST:-}" ]; then
-  : "${SMTP_PORT:?} ${SMTP_USER:?} ${SMTP_PASS:?} ${SMTP_ADMIN_EMAIL:?} ${SMTP_SENDER_NAME:?}"
-  # smtp_port goes as the type the API returns (a number when unset, as in
-  # Supabase's own SMTP guide).
-  auth_patch=$(jq -c --argjson cur "$auth" \
-    --arg host "$SMTP_HOST" --arg port "$SMTP_PORT" --arg user "$SMTP_USER" --arg pass "$SMTP_PASS" \
-    --arg admin "$SMTP_ADMIN_EMAIL" --arg name "$SMTP_SENDER_NAME" \
-    '. + {smtp_host: $host,
-          smtp_port: (if ($cur.smtp_port | type) == "string" then $port else ($port | tonumber) end),
-          smtp_user: $user, smtp_pass: $pass, smtp_admin_email: $admin, smtp_sender_name: $name}' <<<"$auth_patch")
+# The Send Email Hook: News sends every auth email through Resend.
+if [ -n "${SEND_EMAIL_HOOK_SECRET_FILE:-}" ]; then
+  : "${NEWS_URL:?Set NEWS_URL too: the hook is <NEWS_URL>api/auth/send-email}"
+  secret=$(tr -d '[:space:]' < "$SEND_EMAIL_HOOK_SECRET_FILE")
+  if [[ $secret != v1,whsec_* ]]; then
+    echo "$SEND_EMAIL_HOOK_SECRET_FILE doesn't hold a hook secret (v1,whsec_...)." >&2
+    exit 1
+  fi
+  auth_patch=$(jq -c --arg uri "${NEWS_URL%/}/api/auth/send-email" --arg secret "$secret" \
+    '. + {hook_send_email_enabled: true, hook_send_email_uri: $uri, hook_send_email_secrets: $secret}' <<<"$auth_patch")
 fi
 
 # --- Show, confirm, apply -----------------------------------------------------
@@ -113,12 +116,12 @@ if [ "$auth_patch" = '{}' ]; then
   echo "  Auth: nothing to change"
 else
   jq -r --argjson cur "$auth" 'to_entries[] |
-    if .key == "smtp_pass" then "  Auth: smtp_pass -> (set)"
+    if .key == "hook_send_email_secrets" then "  Auth: hook_send_email_secrets -> (set)"
     elif (.key | startswith("mailer_templates_")) then "  Auth: \(.key) -> supabase/templates"
     else "  Auth: \(.key): \($cur[.key] | tojson) -> \(.value | tojson)" end' <<<"$auth_patch"
 fi
 [ -z "${NEWS_URL:-}" ] && echo "  (NEWS_URL not set: redirect URLs left as they are)"
-[ -z "${SMTP_HOST:-}" ] && echo "  (SMTP_HOST not set: email sender left as it is)"
+[ -z "${SEND_EMAIL_HOOK_SECRET_FILE:-}" ] && echo "  (SEND_EMAIL_HOOK_SECRET_FILE not set: email sender left as it is)"
 
 if [ "$postgrest_patch" = '{}' ] && [ "$auth_patch" = '{}' ]; then exit 0; fi
 if [ "$YES" != "--yes" ]; then

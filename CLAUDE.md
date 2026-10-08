@@ -59,9 +59,11 @@ News clone) uses this project too. All of its migrations live here.
   `news.profiles.staff` in step (on profile claim and every minute); News
   reads the list only through `news_private.signal_staff()`. Never authorize
   anything on `user_metadata`: every user can rewrite their own.
-- Its auth email templates are `supabase/templates/`. Production's project
-  settings for News (exposed `news` schema, email sign-up with confirmation,
-  templates, redirect URL, SMTP) are applied with
+- Auth emails are sent by News through Resend, as the project's Send Email
+  Hook (exponential-news `app/api/auth/send-email`); `supabase/templates/`
+  is what Supabase sends if the hook is off. Production's project settings
+  for News (exposed `news` schema, email sign-up with confirmation, templates,
+  one-hour links, redirect URL, the hook) are applied with
   `scripts/news-production-settings.sh`, which changes nothing else.
 
 ## Local development
