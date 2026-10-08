@@ -115,7 +115,7 @@ select is_empty($$
   where n.nspname in ('public', 'graphql_public', 'news') and p.prosecdef
     and has_function_privilege('anon', p.oid, 'EXECUTE')
     and p.oid::regprocedure::text not in ('news.is_admin()', 'news.leaders(integer)',
-      'news.username_available(text)', 'news.profile_private(uuid)')
+      'news.username_available(text)', 'news.profile_private(uuid)', 'news.points_curve(bigint)')
 $$, 'anon can call no SECURITY DEFINER function in an exposed schema (but News'' own read helpers)');
 
 select ok(not has_schema_privilege('anon', 'community_private', 'USAGE')
