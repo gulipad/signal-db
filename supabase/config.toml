@@ -184,7 +184,7 @@ otp_expiry = 3600
 # always passes its own /auth/confirm url as the redirect. Production uses the
 # same files, pasted in Authentication > Emails.
 [auth.email.template.confirmation]
-subject = "Confirm your Exponential News account"
+subject = "Your Exponential News login link"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.magic_link]

@@ -75,7 +75,7 @@ auth_patch=$(jq -nc \
       external_email_enabled: true,
       mailer_autoconfirm: false,
       password_min_length: ([$cur.password_min_length // 6, 8] | max),
-      mailer_subjects_confirmation: "Confirm your Exponential News account",
+      mailer_subjects_confirmation: "Your Exponential News login link",
       mailer_templates_confirmation_content: $confirmation,
       mailer_subjects_magic_link: "Your Exponential News login link",
       mailer_templates_magic_link_content: $magic_link,
