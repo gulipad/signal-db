@@ -45,6 +45,14 @@ schemas=$(jq -r '.db_schema' <<<"$postgrest")
 if grep -qE '(^|,)[[:space:]]*news[[:space:]]*(,|$)' <<<"$schemas"; then
   postgrest_patch='{}'
 else
+  # Exposing a schema that doesn't exist stops the whole Data API (Signal's
+  # too) from loading its schema cache. Push the migrations first.
+  exists=$(api POST /database/query '{"query": "select exists (select 1 from pg_namespace where nspname = '\''news'\'') as ok"}' \
+           | jq -r '.[0].ok')
+  if [ "$exists" != "true" ]; then
+    echo "The news schema doesn't exist in $REF yet: run 'supabase db push' first." >&2
+    exit 1
+  fi
   postgrest_patch=$(jq -nc --arg s "$schemas, news" '{db_schema: $s}')
 fi
 
