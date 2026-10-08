@@ -54,6 +54,11 @@ News clone) uses this project too. All of its migrations live here.
   `news_private.badge_rules`.
 - News accounts are auth users with `user_metadata.signup_app = 'news'` and
   get no `public.profiles` row.
+- Staff (`public.staff`) use the same login on News and are staff there:
+  admins, with a "staff" mark. `news_private.apply_staff()` keeps
+  `news.profiles.staff` in step (on profile claim and every minute); News
+  reads the list only through `news_private.signal_staff()`. Never authorize
+  anything on `user_metadata`: every user can rewrite their own.
 - Its auth email templates are `supabase/templates/`. Production's project
   settings for News (exposed `news` schema, email sign-up with confirmation,
   templates, redirect URL, SMTP) are applied with

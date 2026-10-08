@@ -22,7 +22,9 @@ with u (id, email, password, username) as (values
     confirmation_token, recovery_token, email_change_token_new, email_change,
     email_change_token_current, phone_change, phone_change_token, reauthentication_token)
   select '00000000-0000-0000-0000-000000000000', id, 'authenticated', 'authenticated', email,
-         extensions.crypt(password, extensions.gen_salt('bf')), now(),
+         -- Confirmed a day ago: a link that confirms an address replaces any
+         -- earlier password (app/auth/confirm), and these keep theirs.
+         extensions.crypt(password, extensions.gen_salt('bf')), now() - interval '1 day',
          '{"provider": "email", "providers": ["email"]}',
          jsonb_build_object('signup_app', 'news', 'username', username), now(), now(),
          '', '', '', '', '', '', '', ''
