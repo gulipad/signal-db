@@ -78,7 +78,7 @@ begin
   end;
 end $$;
 
-select plan(64);
+select plan(69);
 
 -- Fresh users, so nothing done in the app beforehand changes the numbers.
 create temp table u as
@@ -113,6 +113,21 @@ select throws_ok($$select news.submit_story('', 'Nothing', '')$$, '22023', 'both
 select lives_ok($$select news.submit_story('', 'Arc markup',
   'Hello<p><i>world</i> <a href="https://example.com/x?a=1&amp;b=2" rel="nofollow">https://example.com/x</a><p><pre><code>  x &#60; y</code></pre>')$$,
   'accepts Arc markup');
+select lives_ok($$select news.post_comment(tests.item('Arc markup'),
+  'Same<p><img class="gif" src="https://static.klipy.com/ii/935d7ab9d8c6202580a668421940ec81/14/af/SE72470w.webp" alt="GIF" loading="lazy">')$$,
+  'accepts a GIF from KLIPY');
+select throws_ok($$select news.post_comment(tests.item('Arc markup'),
+  '<img class="gif" src="https://example.com/x.gif" alt="GIF" loading="lazy">')$$, '23514', null,
+  'rejects images from anywhere else');
+select throws_ok($$select news.post_comment(tests.item('Arc markup'),
+  '<img class="gif" src="https://static.klipy.com.evil.example/x.gif" alt="GIF" loading="lazy">')$$, '23514', null,
+  'rejects hosts that only start like KLIPY''s');
+select throws_ok($$select news.post_comment(tests.item('Arc markup'),
+  '<img class="gif" src="http://static.klipy.com/x.gif" alt="GIF" loading="lazy">')$$, '23514', null,
+  'rejects KLIPY images over http');
+select throws_ok($$select news.post_comment(tests.item('Arc markup'),
+  '<img class="gif" src="https://static.klipy.com/x.gif" alt="GIF" loading="lazy" onload="alert(1)">')$$, '23514', null,
+  'rejects extra attributes on images');
 select lives_ok($$select news.submit_story('https://www.bbc.co.uk/news', 'BBC', '')$$, 'accepts a link');
 select is((select site from news.items where id = tests.item('BBC')), 'bbc.co.uk',
           'the site is computed by the database');
