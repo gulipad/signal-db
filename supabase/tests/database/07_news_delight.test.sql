@@ -61,7 +61,7 @@ create function tests.rank_of(p_id bigint) returns bigint language sql stable as
   select n from news.top_story_ids(1000) with ordinality as t(id, n) where t.id = p_id
 $$;
 
-select plan(27);
+select plan(26);
 
 -- ----------------------------------------------------------------------------
 -- Read markers
@@ -156,14 +156,13 @@ select is((select max(points) from news.points_curve(tests.item('Fresh'))), 1,
 select tests.as_user(tests.uid('fel'));
 select news.post_comment(tests.item('Delight story'), 'Hat off.', false);
 select is((select hat from news.items where text = 'Hat off.'), false, 'a comment can go without its hat');
+-- A launch is asked for, never posted (09_news_launch_requests).
 select tests.as_user(tests.uid('alice'));
 select throws_ok($$select news.submit_story('https://example.com/a', 'Launch EN: Alice Co', '')$$,
-                 '22023', 'launch', 'Launch EN is for Exponential companies');
+                 '22023', 'launch', 'nobody posts a launch');
 select tests.as_user(tests.uid('fel'));
-select lives_ok($$select news.submit_story('https://example.com/f', 'Launch EN: Fel Co', '')$$,
-                'a fellow launches');
-select throws_ok($$select news.submit_story('https://example.com/f2', 'launch en: Again', '')$$,
-                 '22023', 'launched', 'once');
+select throws_ok($$select news.submit_story('https://example.com/f', 'Launch EN: Fel Co', '')$$,
+                 '22023', 'launch', 'not even a fellow');
 
 select tests.as_postgres();
 select * from finish();
