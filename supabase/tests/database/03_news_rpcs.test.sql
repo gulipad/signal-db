@@ -152,17 +152,15 @@ select ok(news.post_comment((select id from news.items where text = 'Bob says hi
 select tests.as_user(tests.uid('alice'));
 select ok(news.post_comment(tests.item('BBC'), 'Downvote me') > 0, 'alice comments');
 select tests.as_user(tests.uid('bob'));
-select ok(not news.vote_item((select id from news.items where text = 'Downvote me'), -1),
-          'bob cannot downvote with 1 karma');
-select tests.as_postgres();
-update news.profiles set karma = 300 where username = 't_bob';
-select tests.as_user(tests.uid('bob'));
-select ok(not news.vote_item(tests.item('Arc markup'), -1), 'stories cannot be downvoted');
-select ok(not news.vote_item((select id from news.items where text = 'Grace replies'), -1),
-          'bob cannot downvote a reply to himself');
 select ok(news.vote_item((select id from news.items where text = 'Downvote me'), -1),
-          'bob downvotes a comment with 300 karma');
+          'bob downvotes a comment, with 1 karma');
 select is((select karma from news.profiles where username = 't_alice'), 1, 'the downvote cost alice karma');
+select ok(not news.vote_item((select id from news.items where text = 'Downvote me'), -1), 'bob cannot downvote twice');
+select ok(news.vote_item(tests.item('Arc markup'), -1) and news.unvote_item(tests.item('Arc markup')),
+          'stories can be downvoted too');
+select ok(news.vote_item((select id from news.items where text = 'Grace replies'), -1)
+          and news.unvote_item((select id from news.items where text = 'Grace replies')),
+          'and so can a reply to him');
 
 select ok(news.unvote_item((select id from news.items where text = 'Downvote me')), 'bob takes it back');
 select is((select score from news.items where text = 'Downvote me'), 1, 'the score is restored');
