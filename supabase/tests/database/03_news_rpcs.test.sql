@@ -175,7 +175,8 @@ select ok(not news.unvote_item(tests.item('BBC')), 'alice cannot take back her o
 -- ----------------------------------------------------------------------------
 
 select tests.as_user(tests.uid('grace'));   -- karma 1
-select ok(not news.toggle_flag(tests.item('BBC')), 'flagging needs more than 30 karma');
+select ok(news.toggle_flag(tests.item('BBC')), 'any member reports, for a moderator to review (11_news_report_review)');
+select news.toggle_flag(tests.item('BBC'));  -- and takes it back
 select ok(news.submit_story('', 'Flag me', 'spam') > 0, 'grace posts spam');
 
 select tests.as_postgres();
