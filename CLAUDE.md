@@ -74,3 +74,9 @@ candidates and News demo accounts). `supabase test db` runs the pgTAP tests
 in `supabase/tests`, including the checks that News users can't reach Signal
 data. Add a migration here for every schema change, including ones made in
 production first, so a database built from this directory keeps matching it.
+
+New tables, views and sequences in `public` get no Data API grants by default
+(Supabase's change of 2026-10-30, see
+`20261020120000_explicit_public_grants.sql`): grant `authenticated` and
+`service_role` (and `anon` only for data anonymous users read) in the same
+migration that creates the object, or the API answers "permission denied".
