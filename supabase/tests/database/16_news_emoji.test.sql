@@ -1,0 +1,111 @@
+-- Emoji of News' own, added by members with a badge and staff, and a status.
+begin;
+create extension if not exists pgtap with schema extensions;
+
+create schema tests;
+grant usage on schema tests to anon, authenticated;
+
+create function tests.as_user(p_id uuid) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', p_id, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+end $$;
+
+create function tests.as_anon() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"role": "anon"}', true);
+  perform set_config('role', 'anon', true);
+end $$;
+
+create function tests.as_postgres() returns void language plpgsql as $$
+begin
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '', true);
+end $$;
+
+create function tests.new_user(p_email text, p_username text) returns uuid language plpgsql as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (
+    instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change_token_new, email_change,
+    email_change_token_current, phone_change, phone_change_token, reauthentication_token)
+  values ('00000000-0000-0000-0000-000000000000', v_id, 'authenticated', 'authenticated', p_email, '', now(),
+          '{"provider": "email", "providers": ["email"]}', '{"signup_app": "news"}', now(), now(),
+          '', '', '', '', '', '', '', '');
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', v_id, 'role', 'authenticated')::text, true);
+  perform news.claim_profile(p_username);
+  perform set_config('request.jwt.claims', '', true);
+  return v_id;
+end $$;
+
+create temp table u as
+select name, tests.new_user('e_' || name || '@news.test', 'e_' || name) as id
+from unnest(array['fellow', 'other', 'plain', 'admin']) name;
+grant select on u to anon, authenticated;
+create function tests.uid(p_name text) returns uuid language sql stable as $$
+  select id from u where name = p_name
+$$;
+create function tests.pic(p_name text, p_file text) returns text language sql stable as $$
+  select 'media/' || tests.uid(p_name)::text || '/' || p_file
+$$;
+grant execute on function tests.uid(text), tests.pic(text, text) to anon, authenticated;
+
+update news.profiles set badge = 'fellowship' where id = tests.uid('fellow');
+update news.profiles set badge = 'community' where id = tests.uid('other');
+update news.profiles set is_admin = true where id = tests.uid('admin');
+
+select plan(18);
+
+-- Adding
+select tests.as_user(tests.uid('plain'));
+select throws_ok($$select news.add_emoji('party', tests.pic('plain', 'abcdef0123.png'))$$, '42501', 'nobadge',
+                 'a member without a badge adds no emoji');
+
+select tests.as_user(tests.uid('fellow'));
+select lives_ok($$select news.add_emoji('party', tests.pic('fellow', 'abcdef0123.png'))$$,
+                'a member with a badge adds one');
+select throws_ok($$select news.add_emoji('Party Time', tests.pic('fellow', 'abcdef0124.png'))$$, '22023', 'badname',
+                 'a name is lower case letters, digits, - and _');
+select throws_ok($$select news.add_emoji('x', tests.pic('fellow', 'abcdef0124.png'))$$, '22023', 'badname',
+                 'a name is two characters at least');
+select throws_ok($$select news.add_emoji('stolen', tests.pic('other', 'abcdef0124.png'))$$, '22023', 'badpath',
+                 'the image is in the adder''s own folder');
+select throws_ok($$insert into news.emoji (name, path, "by") values ('direct', tests.pic('fellow', 'abcdef0125.png'), tests.uid('fellow'))$$,
+                 '42501', null, 'emoji are only added through add_emoji');
+
+select tests.as_user(tests.uid('other'));
+select throws_ok($$select news.add_emoji('party', tests.pic('other', 'abcdef0126.png'))$$, '23505', 'taken',
+                 'a name is one emoji''s');
+select lives_ok($$select news.add_emoji('ship-it', tests.pic('other', 'abcdef0127.gif'))$$,
+                'another member with a badge adds theirs');
+
+select tests.as_user(tests.uid('admin'));
+select lives_ok($$select news.add_emoji('staff_only', tests.pic('admin', 'abcdef0128.webp'))$$, 'staff add one too');
+
+-- Reading
+select tests.as_anon();
+select is((select count(*)::int from news.emoji), 3, 'anyone reads them');
+select is((select "by" from news.emoji where name = 'party'), tests.uid('fellow'), 'and who added each');
+
+-- Taking away
+select tests.as_user(tests.uid('other'));
+select throws_ok($$select news.remove_emoji('party')$$, '22023', 'noemoji', 'nobody takes away someone else''s');
+select lives_ok($$select news.remove_emoji('ship-it')$$, 'whoever added one takes it away');
+select tests.as_user(tests.uid('admin'));
+select lives_ok($$select news.remove_emoji('party')$$, 'an admin takes away anyone''s');
+select is((select array_agg(name)::text from news.emoji), '{staff_only}', 'what''s left');
+
+-- A status
+select tests.as_user(tests.uid('plain'));
+select lives_ok($$select news.update_profile(tests.uid('plain'), '{"status": "🚀"}')$$, 'anyone wears a status');
+select throws_ok($$select news.update_profile(tests.uid('plain'), '{"status": "<b>"}')$$, '23514', null,
+                 'a status holds no markup');
+select tests.as_anon();
+select is((select status from news.profiles where id = tests.uid('plain')), '🚀', 'and everyone reads it');
+
+select tests.as_postgres();
+select * from finish();
+rollback;
