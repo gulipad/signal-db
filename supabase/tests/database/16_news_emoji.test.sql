@@ -58,7 +58,7 @@ update news.profiles set badge = 'fellowship' where id = tests.uid('fellow');
 update news.profiles set badge = 'community' where id = tests.uid('other');
 update news.profiles set is_admin = true where id = tests.uid('admin');
 
-select plan(21);
+select plan(27);
 
 -- Adding
 select tests.as_user(tests.uid('plain'));
@@ -112,6 +112,18 @@ select tests.as_anon();
 select is((select status from news.profiles where id = tests.uid('plain')), '🚀', 'and everyone reads it');
 select is((select status_text from news.profiles where id = tests.uid('plain')), 'De vacaciones <hasta el lunes>',
           'its words too');
+
+-- Set in one go, and cleared
+select tests.as_user(tests.uid('other'));
+select lives_ok($$select news.set_status('📅', 'En una reunión', now() + interval '1 hour')$$, 'a status is set in one go');
+select is((select status || ' ' || status_text || ' ' || (status_until > now())::text from news.profiles where id = tests.uid('other')),
+          '📅 En una reunión true', 'with when it goes');
+select throws_ok($$select news.set_status('📅', 'Ayer', now() - interval '1 hour')$$, '22023', 'past', 'never to go in the past');
+select lives_ok($$select news.set_status('', 'Lo que sea', now() + interval '1 hour')$$, 'clearing the emoji');
+select is((select status || '|' || status_text || '|' || coalesce(status_until::text, 'none') from news.profiles where id = tests.uid('other')),
+          '||none', 'clears all three');
+select tests.as_anon();
+select throws_ok($$select news.set_status('📅', '', null)$$, '42501', null, 'a visitor sets no status');
 
 select tests.as_postgres();
 select * from finish();
