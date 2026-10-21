@@ -1,4 +1,5 @@
--- Emoji of News' own, added by members with a badge and staff, and a status.
+-- Emoji of News' own, added by members with a badge and staff, and a status
+-- with its words.
 begin;
 create extension if not exists pgtap with schema extensions;
 
@@ -57,7 +58,7 @@ update news.profiles set badge = 'fellowship' where id = tests.uid('fellow');
 update news.profiles set badge = 'community' where id = tests.uid('other');
 update news.profiles set is_admin = true where id = tests.uid('admin');
 
-select plan(18);
+select plan(21);
 
 -- Adding
 select tests.as_user(tests.uid('plain'));
@@ -103,8 +104,14 @@ select tests.as_user(tests.uid('plain'));
 select lives_ok($$select news.update_profile(tests.uid('plain'), '{"status": "🚀"}')$$, 'anyone wears a status');
 select throws_ok($$select news.update_profile(tests.uid('plain'), '{"status": "<b>"}')$$, '23514', null,
                  'a status holds no markup');
+select lives_ok($$select news.update_profile(tests.uid('plain'), '{"status_text": "De vacaciones <hasta el lunes>"}')$$,
+                'a status says something, as plain text');
+select throws_ok($$select news.update_profile(tests.uid('plain'), jsonb_build_object('status_text', repeat('a', 101)))$$,
+                 '23514', null, 'in 100 characters at most');
 select tests.as_anon();
 select is((select status from news.profiles where id = tests.uid('plain')), '🚀', 'and everyone reads it');
+select is((select status_text from news.profiles where id = tests.uid('plain')), 'De vacaciones <hasta el lunes>',
+          'its words too');
 
 select tests.as_postgres();
 select * from finish();
